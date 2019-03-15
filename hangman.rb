@@ -2,11 +2,11 @@ require 'csv'
 require 'yaml'
 
 class Hangman
-	attr_reader :word
 
 	def initialize
 		@word = choose_word
 		@displayed_word = []
+		@counter = 0
 		@word.length.times do
 			@displayed_word << "_ "
 		end 
@@ -15,13 +15,21 @@ class Hangman
 	def play
 		if File.exist? ('savegame.yml')
 			puts "Do you want to resume your game? (Y/N)"
-			load_game if gets.chomp.downcase == 'y'
-
+			if gets.chomp.downcase == 'y'
+				load_game
+				display_word
+			end
 		end
 		until @displayed_word.none?("_ ")
+			if @counter >= 6
+				puts "You lost!"
+				File.delete 'savegame.yml'
+				exit
+			end
+
 			letter = get_letter
 		
-			check_letter letter
+			check_letter letter if letter != "0"
 
 			display_word
 		end
@@ -49,6 +57,7 @@ class Hangman
 		letter = gets.chomp
 		if letter == "0"
 		  save_game
+			puts "Game saved!"
 			puts "Do you want to leave now? (Y/N)"
 			exit if gets.chomp.downcase == "y"
 		else
@@ -64,6 +73,7 @@ class Hangman
 		right_letter = (0..@word.length).select do |index| 
 			@word[index] == letter
 		end
+		@counter += 1 if right_letter.length == 0
 		right_letter.each do |index|
 			@displayed_word[index] = letter   
 		end  
@@ -71,14 +81,16 @@ class Hangman
 
 	#Serialization code
 	def save_game
-	  data = {word: @word, displayed_word: @displayed_word}
+	  data = {word: @word, displayed_word: @displayed_word, counter: @counter}
 		file = File.open 'savegame.yml', 'w'
 		file.puts YAML.dump(data)
+		file.close
 	end
 	def load_game
 		data = YAML.load(File.open('savegame.yml'))
 		@word = data[:word]
 		@displayed_word = data[:displayed_word]
+		@counter = data[:counter]
 	end
 end
 
